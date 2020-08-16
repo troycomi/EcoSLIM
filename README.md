@@ -1,6 +1,6 @@
 # EcoSLIM
 This is the MPI version.
-Please make the Makefile to build the EcoSLIM
+Please make the Makefile to build the EcoSLIM.
 Run example:
 mpirun -np 20 ./EcoSLIM.exe
 20 is the number of processes used.
