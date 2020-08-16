@@ -1,3 +1,4 @@
 # EcoSLIM
-EcoSLIM 
-Single GPU version
+This is the single GPU version.
+Use the Makefile to build EcoSLIM.
+
