@@ -1240,7 +1240,7 @@ do kk = outkk, pfnt
             P_de,C_de,dz_de,EvapTrans_de,Vx_de,Vy_de,Vz_de,&
             Saturation_de,Porosity_de,out_age_de,out_mass_de,out_comp_de,&
             et_age_de,et_mass_de,et_comp_de,out_np_de,et_np_de,Ind_de,&
-            kk,np_ps,nx,ny,nz,pfnt,nind,pfdt,moldiff,dx,dy,denh2o,dtfrac,&
+            kk,np_ps,nx,ny,nz,nind,pfdt,moldiff,dx,dy,denh2o,dtfrac,&
             xmin,ymin,zmin,xmax,ymax,zmax)
 
         P(1:np_ps,1:12+2*nind) = P_de(1:np_ps,1:12+2*nind)
