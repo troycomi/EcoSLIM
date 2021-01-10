@@ -1,34 +1,19 @@
 module create_subgrid
+    integer::nnx1,nny1,ix1,iy1,ppx,qqy
     contains
-    subroutine gridinfo(grid,nx,ny,ppx,qqy)
-        integer::grid(:,:)
-        integer::nx,ny,ppx,qqy
-        integer::i,j,ncount
-        integer::nnx(ppx),nny(qqy)
+    subroutine gridinfo(nx,ny,rank)
+        integer::nx,ny,rank
+        integer::indexx,indexy
 
-        nnx(:)=nx/ppx
-        nnx(ppx)=nx/ppx+mod(nx,ppx)
-        nny(:)=ny/qqy
-        nny(qqy)=ny/qqy+mod(ny,qqy)
+        indexx=mod(rank,ppx)+1
+        indexy=rank/ppx+1
 
-        ncount=0
-        do j=1,qqy
-            do i=1,ppx
-                ncount=ncount+1
-                if(i>1) then
-                    grid(ncount,1)=1+sum(nnx(1:i-1))
-                else
-                    grid(ncount,1)=1
-                endif
-                if(j>1) then
-                    grid(ncount,2)=1+sum(nny(1:j-1))
-                else
-                    grid(ncount,2)=1
-                endif
-                grid(ncount,3)=nnx(i)
-                grid(ncount,4)=nny(j)
-            end do
-        end do
+        nnx1=nx/ppx
+        nny1=ny/qqy
+        ix1=(indexx-1)*nnx1  !used to read pfb files
+        iy1=(indexy-1)*nny1
+        if(indexx==ppx) nnx1=nx/ppx+mod(nx,ppx)
+        if(indexy==qqy) nny1=ny/qqy+mod(ny,qqy)
 
     end subroutine gridinfo
 end module create_subgrid
