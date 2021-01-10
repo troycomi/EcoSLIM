@@ -19,7 +19,7 @@ contains
   real*8,value::pfdt,moldiff,dx,dy,denh2o,dtfrac
   real*8,value::xmin,ymin,zmin,xmax,ymax,zmax
 
-  integer::ii,k,Ploc(3),ir,temp2
+  integer::ii,k,Ploc(3),ir,itemp
   real*8::Clocx,Clocy,Clocz,Vpx,Z,Vpy,Vpz,&
   particledt,delta_time,et_flux,water_vol,advdt(3),&
   z1,z2,z3,Zr,temp,lock,Ltemp
@@ -100,7 +100,7 @@ contains
             temp = atomicAdd(Out_comp(3), P(ii,6))
             end if
 
-            temp2 = atomicAdd(Out_np(1), idnint(lock))
+            idnint(temp) = atomicAdd(Out_np(1), idnint(lock))
 
             !flag particle as inactive
             P(ii,8) = 0.
@@ -192,7 +192,7 @@ contains
             temp = atomicAdd(ET_comp(3), P(ii,6))
             end if
 
-            temp2 = atomicAdd(ET_np(1), idnint(lock))
+            idnint(temp) = atomicAdd(ET_np(1), idnint(lock))
 
             !outputting spatially distributed ET information
             temp = atomicAdd(C(6,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),lock)
@@ -246,15 +246,13 @@ contains
             end if
 
             if (nind > 0) then
-              !itemp=idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))
-              if(idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1)) > 0 .and. &
-                 idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1)) <= nind) then
+              itemp=idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))
+              if(itemp > 0 .and. &
+                 itemp <= nind) then
 
-                P(ii,12+idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))) = &
-                P(ii,12+idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))) + particledt
+                P(ii,12+itemp) = P(ii,12+itemp) + particledt
 
-                P(ii,12+nind+idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))) = &
-                P(ii,12+nind+idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))) + Ltemp
+                P(ii,12+nind+itemp) = P(ii,12+nind+itemp) + Ltemp
               end  if
             end if
 
