@@ -100,7 +100,7 @@ contains
             temp = atomicAdd(Out_comp(3), P(ii,6))
             end if
 
-            idnint(temp) = atomicAdd(Out_np(1), idnint(lock))
+            temp = atomicAdd(Out_np(1), idnint(lock))
 
             !flag particle as inactive
             P(ii,8) = 0.
@@ -192,7 +192,7 @@ contains
             temp = atomicAdd(ET_comp(3), P(ii,6))
             end if
 
-            idnint(temp) = atomicAdd(ET_np(1), idnint(lock))
+            temp = atomicAdd(ET_np(1), idnint(lock))
 
             !outputting spatially distributed ET information
             temp = atomicAdd(C(6,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),lock)
