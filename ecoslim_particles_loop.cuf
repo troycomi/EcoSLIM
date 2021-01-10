@@ -247,8 +247,7 @@ contains
 
             if (nind > 0) then
               itemp=idnint(Ind(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))
-              if(itemp > 0 .and. &
-                 itemp <= nind) then
+              if(itemp > 0 .and. itemp <= nind) then
 
                 P(ii,12+itemp) = P(ii,12+itemp) + particledt
 
