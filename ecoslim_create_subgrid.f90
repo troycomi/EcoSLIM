@@ -2,6 +2,7 @@ module create_subgrid
     integer::nnx1,nny1,ix1,iy1,ppx,qqy
     contains
     subroutine gridinfo(nx,ny,rank)
+        implicit none
         integer::nx,ny,rank
         integer::indexx,indexy
 
