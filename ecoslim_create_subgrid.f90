@@ -1,9 +1,6 @@
 module create_subgrid
     integer::nnx1,nny1,ix1,iy1,ppx,qqy
     integer::nnx3,nny3,ix3,iy3
-    real(8),allocatable::PME_sub(:,:)
-    integer,allocatable::PME_tot(:,:)
-    integer,allocatable::nump2(:,:,:)
 contains
     subroutine gridinfo(nx,ny,rank)
         implicit none
@@ -37,17 +34,19 @@ contains
 
     end subroutine gridinfo
 
-    subroutine grid_PME(nx,ny,nz,rank,pft1,pft2,iflux_p_res,offset)
+    subroutine grid_PME(nx,ny,rank,pft1,pft2,iflux_p_res,offset,PME_sub,PME_tot)
         use mpi
         implicit none
-        integer:: nx,ny,nz,rank
+        integer:: nx,ny,rank
+        real(8):: PME_sub(nx,ny,1)
         integer:: pft1,pft2,pfkk,iflux_p_res
-        integer:: fh,ierr
+        integer:: fh,ierr,PME_tot(nx,ny,1)
         integer(mpi_offset_kind):: offset
         character(200):: fname, filenum
 
         PME_tot = 0   !new arrays in module should be allocated in main
         PME_sub = 0.d0
+        !Here is OK. No matter the frequency, we should set them 0 when call.
 
         do pfkk = pft1, pft2
 
@@ -56,22 +55,22 @@ contains
 
             call mpi_file_open(mpi_comm_world,fname,mpi_mode_rdonly,mpi_info_null,fh,ierr)
             call mpi_file_seek(fh,offset,mpi_seek_set,ierr)
-            call mpi_file_read(fh,PME_sub(ix1+1:ix1+nnx1,iy1+1:iy1+nny1),nnx1*nny1,&
+            call mpi_file_read(fh,PME_sub(ix1+1:ix1+nnx1,iy1+1:iy1+nny1,1),nnx1*nny1,&
             mpi_double_precision,mpi_status_ignore,ierr)
             call mpi_file_close(fh,ierr)
 
-            where (PME_sub > 0.d0) PME_tot = PME_tot + iflux_p_res
+            where (PME_sub(:,:,1) > 0.d0) PME_tot(:,:,1) = PME_tot(:,:,1) + iflux_p_res
 
         enddo
 
-        call mpi_allreduce(mpi_in_place,PME_tot,nx*ny,mpi_integer,mpi_sum,mpi_comm_world,ierr)
+        call mpi_allreduce(mpi_in_place,PME_tot(:,:,1),nx*ny,mpi_integer,mpi_sum,mpi_comm_world,ierr)
 
     end subroutine grid_PME
 
-    subroutine grid_adjust(nx,ny,rank)
+    subroutine grid_adjust(nx,ny,nz,rank,PME_tot)
         !Now it is x then y. If only x or y, please be careful.
         implicit none
-        integer::nx,ny,rank
+        integer,intent(in)::nx,ny,nz,rank,PME_tot(nx,ny,nz)
         integer::nlev,dir,sub_tp,sub_lp
         integer::grid(ppx*qqy,4),ix2,iy2,nnx2,nny2
         integer::i,j,k,n
@@ -94,9 +93,9 @@ contains
 
                 select case (dir)
                 case(1)
-                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2))
+                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
                     k=1
-                    sub_lp=sum(PME_tot(ix2+k,iy2+1:iy2+nny2))
+                    sub_lp=sum(PME_tot(ix2+k,iy2+1:iy2+nny2,1:nz))
                     !if(sub_lp >= sub_tp/2) print *, 'domain too small/uneven to divide, &
                     !only one column in the left, program stopped'
                     !stop
@@ -112,13 +111,13 @@ contains
                             !if(k==nnx2-1) print *, 'domain too small/uneven to divide, &
                             !only one column in the right, program stopped'
                             !stop
-                            sub_lp=sub_lp+sum(PME_tot(ix2+k,iy2+1:iy2+nny2))
+                            sub_lp=sub_lp+sum(PME_tot(ix2+k,iy2+1:iy2+nny2,1:nz))
                         endif
                     enddo
                 case(-1)
-                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2))
+                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
                     k=1
-                    sub_lp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+k))
+                    sub_lp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+k,1:nz))
                     !if(sub_lp >= sub_tp/2) print *, 'domain too small/uneven to divide, &
                     !only one row in the bottom, program stopped'
                     !stop
@@ -134,7 +133,7 @@ contains
                             !if(k==nny2-1) print *, 'domain too small/uneven to divide, &
                             !only one row in the top, program stopped'
                             !stop
-                            sub_lp=sub_lp+sum(PME_tot(ix2+1:ix2+nnx2,iy2+k))
+                            sub_lp=sub_lp+sum(PME_tot(ix2+1:ix2+nnx2,iy2+k,1:nz))
                         endif
                     enddo
                 end select
@@ -149,11 +148,11 @@ contains
 
     end subroutine grid_adjust
 
-    subroutine grid_adjust2(nx,ny,nz,rank)
+    subroutine grid_adjust2(nx,ny,nz,rank,PME_tot)
         !dichotomizing search
         implicit none
-        integer::nx,ny,nz,rank
-        integer::nlev,dir,sub_tp,sub_lp
+        integer,intent(in)::nx,ny,nz,rank,PME_tot(nx,ny,nz)
+        integer::nlev,dir,sub_tp,sub_lp,sub_lp1,sub_lp2
         integer::grid(ppx*qqy,4),ix2,iy2,nnx2,nny2
         integer::i,j,n,lef,mid,rig,done
 
@@ -176,60 +175,74 @@ contains
 
                 select case (dir)
                 case(1)
-                    sub_tp=sum(nump2(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
-                    lef = 1; rig = nnx2; mid = nnx2/2
-                    sub_lp=sum(nump2(ix2+1:ix2+mid,iy2+1:iy2+nny2,1:nz))
+                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
+                    lef = 0; rig = nnx2; mid = (lef+rig)/2
+                    sub_lp=sum(PME_tot(ix2+1:ix2+mid,iy2+1:iy2+nny2,1:nz))
+                    sub_lp1=sum(PME_tot(ix2+1:ix2+mid-1,iy2+1:iy2+nny2,1:nz))
+                    sub_lp2=sum(PME_tot(ix2+1:ix2+mid+1,iy2+1:iy2+nny2,1:nz))
                     do
                         if(sub_lp == sub_tp/2)then
                             done = 1
                         elseif (sub_lp > sub_tp/2) then
-                            rig = mid; mid = mid/2
-                            sub_lp=sum(nump2(ix2+1:ix2+mid,iy2+1:iy2+nny2,1:nz))
-                            if((rig-mid)==1 .and. (sub_lp<sub_tp/2))then
-                                mid = rig; done = 1
+                            if(sub_lp1 < sub_tp/2) then
+                                done = 1
+                            elseif(sub_lp1 == sub_tp/2) then
+                                done = 1; mid = mid - 1
+                            else
+                                rig = mid; mid = (rig+lef)/2
                             endif
                         elseif (sub_lp < sub_tp/2) then
-                            lef = mid; mid = (rig+mid)/2
-                            sub_lp=sum(nump2(ix2+1:ix2+mid,iy2+1:iy2+nny2,1:nz))
-                            if((mid-lef)==1 .and. (sub_lp>sub_tp/2))then
-                                done = 1
+                            if(sub_lp2 >= sub_tp/2) then
+                                done = 1; mid = mid + 1
+                            else
+                                lef = mid; mid = (rig+lef)/2
                             endif
                         endif
-                        if(done ==  1) then
+                        if(done == 1) then
                             grid(j,1)=ix2;  grid(n,1)=ix2+mid
                             grid(j,2)=iy2;  grid(n,2)=iy2
                             grid(j,3)=mid;  grid(n,3)=nnx2-mid
                             grid(j,4)=nny2; grid(n,4)=nny2
                             exit
                         endif
+                        sub_lp=sum(PME_tot(ix2+1:ix2+mid,iy2+1:iy2+nny2,1:nz))
+                        sub_lp1=sum(PME_tot(ix2+1:ix2+mid-1,iy2+1:iy2+nny2,1:nz))
+                        sub_lp2=sum(PME_tot(ix2+1:ix2+mid+1,iy2+1:iy2+nny2,1:nz))
                     enddo
                 case(-1)
-                    sub_tp=sum(nump2(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
-                    lef = 1; rig = nny2; mid = nny2/2
-                    sub_lp=sum(nump2(ix2+1:ix2+nnx2,iy2+1:iy2+mid,1:nz))
+                    sub_tp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+nny2,1:nz))
+                    lef = 0; rig = nny2; mid = nny2/2
+                    sub_lp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid,1:nz))
+                    sub_lp1=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid-1,1:nz))
+                    sub_lp2=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid+1,1:nz))
                     do
                         if(sub_lp == sub_tp/2)then
                             done = 1
                         elseif (sub_lp > sub_tp/2) then
-                            rig = mid; mid = (mid+lef)/2
-                            sub_lp=sum(nump2(ix2+1:ix2+nnx2,iy2+1:iy2+mid,1:nz))
-                            if((rig-mid)==1 .and. (sub_lp<sub_tp/2))then
-                                mid = rig; done = 1
+                            if(sub_lp1 < sub_tp/2) then
+                                done = 1
+                            elseif(sub_lp1 == sub_tp/2)then
+                                done = 1; mid = mid - 1
+                            else
+                                rig = mid; mid = (lef+rig)/2
                             endif
                         elseif (sub_lp < sub_tp/2) then
-                            lef = mid; mid = (rig+mid)/2
-                            sub_lp=sum(nump2(ix2+1:ix2+nnx2,iy2+1:iy2+mid,1:nz))
-                            if((mid-lef)==1 .and. (sub_lp>sub_tp/2))then
-                                done = 1
+                            if(sub_lp2 >= sub_tp/2) then
+                                done = 1; mid = mid + 1
+                            else
+                                lef = mid; mid = (lef+rig)/2
                             endif
                         endif
-                        if(done ==  1) then
+                        if(done == 1) then
                             grid(j,1)=ix2;  grid(n,1)=ix2
                             grid(j,2)=iy2;  grid(n,2)=iy2+mid
                             grid(j,3)=nnx2; grid(n,3)=nnx2
                             grid(j,4)=mid;  grid(n,4)=nny2-mid
                             exit
                         endif
+                        sub_lp=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid,1:nz))
+                        sub_lp1=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid-1,1:nz))
+                        sub_lp2=sum(PME_tot(ix2+1:ix2+nnx2,iy2+1:iy2+mid+1,1:nz))
                     enddo
                 end select
             enddo
@@ -238,8 +251,8 @@ contains
 
         enddo
 
-        ix1  = grid(rank+1,1); iy1  = grid(rank+1,2)
-        nnx1 = grid(rank+1,3); nny1 = grid(rank+1,4)
+        ix3  = grid(rank+1,1); iy3  = grid(rank+1,2)
+        nnx3 = grid(rank+1,3); nny3 = grid(rank+1,4)
 
     end subroutine grid_adjust2
 end module create_subgrid

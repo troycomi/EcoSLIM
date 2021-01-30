@@ -1,0 +1,8 @@
+2   !nsub
+0 1 !subid
+0   !nsub
+0
+2   !nsub
+2 3
+0   !nsub
+0

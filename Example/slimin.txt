@@ -1,12 +1,15 @@
-SLIM_hillslope_LW_shrub      ! SLIM run name, path to PF-CLM next, followed by DEM
-"../hillslope_clm_LW_shrub/hillslope_clm_LW_shrub"
+SLIM_hillslope_ER_shrub      ! SLIM run name, path to PF-CLM next, followed by DEM
+"../hillslope_clm_ER_shrub/hillslope_clm_ER_shrub"
 "../hillslope.dem.pfb"
 20              !nx
 5               !ny
 20              !nz
 10              !nCLMsoil
 2               !ppx
-1               !qqy
+2               !qqy
+0               !p_redis
+False           !source1
+0               !path 1752
 1               !particles per cell at start of simulation
 30000000        !np Total
 5.0             !dx
