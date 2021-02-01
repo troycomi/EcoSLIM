@@ -1,8 +1,37 @@
 module create_subgrid
-    integer::nnx1,nny1,ix1,iy1,ppx,qqy
-    integer::nnx3,nny3,ix3,iy3
+    integer::ix1,iy1,nnx1,nny1,ppx,qqy
+    integer,allocatable::grid(:,:)
 contains
-    subroutine gridinfo(nx,ny,rank)
+    subroutine gridinfo(nx,ny)
+        implicit none
+        integer::nx,ny
+        integer::i,j,ncount
+        integer::nnx(ppx),nny(qqy)
+
+        nnx(:) = nx/ppx
+        do i = 1, ppx
+            if(i <= mod(nx,ppx)) nnx(i) = nnx(i) + 1
+        enddo
+
+        nny(:) = ny/qqy
+        do j = 1, qqy
+            if(j <= mod(ny,qqy)) nny(j) = nny(j) + 1
+        enddo
+
+        ncount=0
+        do j = 1, qqy
+            do i = 1, ppx
+                ncount = ncount + 1
+                grid(ncount,1) = sum(nnx(1:i-1))
+                grid(ncount,2) = sum(nny(1:j-1))
+                grid(ncount,3) = nnx(i)
+                grid(ncount,4) = nny(j)
+            end do
+        end do
+
+    end subroutine gridinfo
+
+    subroutine gridinfo2(nx,ny,rank)
         implicit none
         integer::nx,ny,rank
         integer::indexx,indexy
@@ -27,52 +56,34 @@ contains
             iy1=mod(ny,qqy)*(nny1+1)+(indexy-mod(ny,qqy)-1)*nny1
         endif
 
-        !ix1=(indexx-1)*nnx1  !used to read pfb files
-        !iy1=(indexy-1)*nny1
-        !if(indexx==ppx) nnx1=nx/ppx+mod(nx,ppx)
-        !if(indexy==qqy) nny1=ny/qqy+mod(ny,qqy)
+    end subroutine gridinfo2
 
-    end subroutine gridinfo
-
-    subroutine grid_PME(nx,ny,rank,pft1,pft2,iflux_p_res,offset,PME_sub,PME_tot)
-        use mpi
+    subroutine grid_PME(nx,ny,nz,pname,pft1,pft2,iflux_p_res,PME_tot)
         implicit none
-        integer:: nx,ny,rank
-        real(8):: PME_sub(nx,ny,1)
+        integer:: nx,ny,nz,PME_tot(:,:,:)
+        real(8):: PME_sub(nx,ny,nz)
         integer:: pft1,pft2,pfkk,iflux_p_res
-        integer:: fh,ierr,PME_tot(nx,ny,1)
-        integer(mpi_offset_kind):: offset
-        character(200):: fname, filenum
+        character(200):: fname, filenum, pname
 
         PME_tot = 0   !new arrays in module should be allocated in main
         PME_sub = 0.d0
         !Here is OK. No matter the frequency, we should set them 0 when call.
 
         do pfkk = pft1, pft2
-
             write(filenum,'(i5.5)') pfkk
-            fname='./Input/eslim.in.evaptrans.'//trim(adjustl(filenum))//'.esb'
-
-            call mpi_file_open(mpi_comm_world,fname,mpi_mode_rdonly,mpi_info_null,fh,ierr)
-            call mpi_file_seek(fh,offset,mpi_seek_set,ierr)
-            call mpi_file_read(fh,PME_sub(ix1+1:ix1+nnx1,iy1+1:iy1+nny1,1),nnx1*nny1,&
-            mpi_double_precision,mpi_status_ignore,ierr)
-            call mpi_file_close(fh,ierr)
-
-            where (PME_sub(:,:,1) > 0.d0) PME_tot(:,:,1) = PME_tot(:,:,1) + iflux_p_res
-
+            fname=trim(adjustl(pname))//'.out.evaptrans.'//trim(adjustl(filenum))//'.pfb'
+            call pfb_read(PME_sub,fname,nx,ny,nz)
+            where (PME_sub(:,:,nz) > 0.d0) PME_tot(:,:,1) = PME_tot(:,:,1) + iflux_p_res
         enddo
-
-        call mpi_allreduce(mpi_in_place,PME_tot(:,:,1),nx*ny,mpi_integer,mpi_sum,mpi_comm_world,ierr)
 
     end subroutine grid_PME
 
-    subroutine grid_adjust(nx,ny,nz,rank,PME_tot)
+    subroutine grid_adjust(nx,ny,nz,PME_tot)
         !Now it is x then y. If only x or y, please be careful.
         implicit none
-        integer,intent(in)::nx,ny,nz,rank,PME_tot(nx,ny,nz)
+        integer,intent(in)::nx,ny,nz,PME_tot(:,:,:)
         integer::nlev,dir,sub_tp,sub_lp
-        integer::grid(ppx*qqy,4),ix2,iy2,nnx2,nny2
+        integer::ix2,iy2,nnx2,nny2
         integer::i,j,k,n
 
         grid = 0
@@ -139,21 +150,19 @@ contains
                 end select
             enddo
 
-            dir=-dir
+            !dir=-dir
+            if(min(ppx,qqy) > 1) dir = -dir
 
         enddo
 
-        ix3  = grid(rank+1,1); iy3  = grid(rank+1,2)
-        nnx3 = grid(rank+1,3); nny3 = grid(rank+1,4)
-
     end subroutine grid_adjust
 
-    subroutine grid_adjust2(nx,ny,nz,rank,PME_tot)
+    subroutine grid_adjust2(nx,ny,nz,PME_tot)
         !dichotomizing search
         implicit none
-        integer,intent(in)::nx,ny,nz,rank,PME_tot(nx,ny,nz)
+        integer,intent(in)::nx,ny,nz,PME_tot(:,:,:)
         integer::nlev,dir,sub_tp,sub_lp,sub_lp1,sub_lp2
-        integer::grid(ppx*qqy,4),ix2,iy2,nnx2,nny2
+        integer::ix2,iy2,nnx2,nny2
         integer::i,j,n,lef,mid,rig,done
 
         grid = 0
@@ -247,12 +256,10 @@ contains
                 end select
             enddo
 
-            dir=-dir
+            !dir=-dir
+            if(min(ppx,qqy) > 1) dir = -dir
 
         enddo
-
-        ix3  = grid(rank+1,1); iy3  = grid(rank+1,2)
-        nnx3 = grid(rank+1,3); nny3 = grid(rank+1,4)
 
     end subroutine grid_adjust2
 end module create_subgrid
