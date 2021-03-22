@@ -1039,7 +1039,7 @@ do kk = outkk, pfnt
         call pfb_read(EvapTrans,fname,nx,ny,nz)
 
         if (mod((kk-1),add_f) == 0) EvapTrans_da=0.d0
-        EvapTrans_da = EvapTrans_da + EvapTrans
+        where (EvapTrans > 0.d0) EvapTrans_da = EvapTrans_da + EvapTrans
 
         ! check if we read full CLM output file
         if (clmfile) then
