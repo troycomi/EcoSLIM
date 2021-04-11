@@ -290,7 +290,7 @@ real(8),allocatable,pinned::ET_age_cpu(:),ET_mass_cpu(:),ET_comp_cpu(:)
 
 integer,parameter:: block_size = 256
 integer:: rank, t_rank, ierr, status(MPI_STATUS_SIZE)
-integer:: np_ps, add_f, p_redis, path, nsub
+integer:: np_ps, add_f, p_redis, path, nsub, cycle_f
 integer:: fh0, fh1, fh2, fh3, fh4
 character(len=MPI_MAX_PROCESSOR_NAME):: hostname
 character(200):: loadf, restartf, exitedf, logf, message
@@ -419,6 +419,7 @@ read(10,*) qqy
 read(10,*) p_redis
 read(10,*) source1
 read(10,*) path
+read(10,*) cycle_f
 ! read in number of particles for IC (if np_ic = -1 then restart from a file)
 read(10,*) np_ic
 
@@ -944,7 +945,7 @@ conc_header(7) = 'ET_Mass'
 conc_header(8) = 'ET_Age'
 conc_header(9) = 'ET_Comp'
 
-if(icwrite > 0)  &
+if(icwrite > 0 .and. rank == 0)  &
 call vtk_write(Time_first,C,conc_header,nx,ny,nz,0,n_constituents,Pnts,vtk_file)
 
 ! clear out C arrays
@@ -1001,6 +1002,17 @@ do kk = outkk, pfnt
 ! reset ParFlow counter for cycles
         if (mod((kk-1),(pft2-pft1+1)) == 0 )  pfkk = pft1 - 1
 
+        if(cycle_f>0) then
+            if(mod(kk-1,cycle_f) == 0) then
+                subid(1) = subid(1) + 1
+                if(subid(1)+1>t_rank) subid(1) = mod(subid(1),t_rank)
+                write(message,'(a,a,i5,a,4(i10,1x),a)') new_line(' '),'rank:',rank, &
+                ', Gridinfo (ix1,iy1,nnx1,nny1):',grid(subid(1)+1,1:4),new_line(' ')
+                call MPI_FILE_WRITE(fh1, trim(message), len(trim(message)), &
+                MPI_CHARACTER, MPI_STATUS_IGNORE, ierr)
+            endif
+        endif
+
         call MPI_BARRIER(MPI_COMM_WORLD, ierr)
         T1 = MPI_Wtime()
         ! adjust the file counters
@@ -1027,7 +1039,7 @@ do kk = outkk, pfnt
         call pfb_read(EvapTrans,fname,nx,ny,nz)
 
         if (mod((kk-1),add_f) == 0) EvapTrans_da=0.d0
-        EvapTrans_da = EvapTrans_da + EvapTrans
+        where (EvapTrans > 0.d0) EvapTrans_da = EvapTrans_da + EvapTrans
 
         ! check if we read full CLM output file
         if (clmfile) then
@@ -1176,10 +1188,19 @@ do kk = outkk, pfnt
             allocate(P_de(np_active,15+2*nind))
             P_de(1:np_active,1:12+2*nind) = P(1:np_active,1:12+2*nind)
             P_de(1:np_active,13+2*nind:15+2*nind) = P(1:np_active,14+2*nind:16+2*nind)
+            nump_path = 0; nump_path_de = nump_path
         else
             allocate(P_de(np_active,12+2*nind))
             P_de = P(1:np_active,1:12+2*nind)
         endif
+
+        out_age_cpu = 0.d0; out_mass_cpu = 0.d0; out_comp_cpu = 0.d0; out_np_cpu = 0
+        et_age_cpu = 0.d0; et_mass_cpu = 0.d0; et_comp_cpu = 0.d0; et_np_cpu = 0
+        out_age_de = out_age_cpu; out_mass_de = out_mass_cpu
+        out_comp_de = out_comp_cpu; out_np_de = out_np_cpu
+        et_age_de = et_age_cpu; et_mass_de = et_mass_cpu
+        et_comp_de = et_comp_cpu; et_np_de = et_np_cpu
+        C = 0.d0; C_de = C
 
         Vx_de   = Vx;        Vy_de   = Vy;        Vz_de   = Vz
         Saturation_de = Saturation;  EvapTrans_de  = EvapTrans
@@ -1267,7 +1288,7 @@ do kk = outkk, pfnt
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     T1 = MPI_Wtime()
 
-write(filenumout,'(i5.5)') kk
+write(filenumout,'(i10.10)') kk
 
 ! write all active particles at concentration in ASCII VisIT 3D file format
 ! as noted above, this option is very slow compared to VTK binary output
@@ -1314,9 +1335,30 @@ end if
 ! write grid based values ("concentrations")
 vtk_file=trim(runname)//'_cgrid'
 if(icwrite > 0)  then
-if(mod(kk,icwrite) == 0)  &
-call vtk_write(Time_Next(kk),C,conc_header,nx,ny,nz,kk,n_constituents,Pnts,vtk_file)
+    !if(mod(kk,icwrite) == 0)  &
+    !call vtk_write(Time_Next(kk),C,conc_header,nx,ny,nz,kk,n_constituents,Pnts,vtk_file)
+    if(mod(kk,icwrite) == 0 .and. rank == 0)  then
+        fname=trim(runname)//'.out.C1.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,1)
+        fname=trim(runname)//'.out.C2.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,2)
+        fname=trim(runname)//'.out.C3.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,3)
+        fname=trim(runname)//'.out.C4.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,4)
+        fname=trim(runname)//'.out.C5.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,5)
+        fname=trim(runname)//'.out.C6.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,6)
+        fname=trim(runname)//'.out.C7.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,7)
+        fname=trim(runname)//'.out.C8.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,8)
+        fname=trim(runname)//'.out.C9.'//trim(adjustl(filenumout))//'.pfb'
+        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,9)
+    end if
 end if
+
 ! write binary particle locations and attributes
 vtk_file=trim(runname)//'_pnts'
 if(ibinpntswrite > 0)  then

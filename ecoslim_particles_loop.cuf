@@ -40,20 +40,20 @@ contains
 !=============================================================================
     ii = (blockIdx%x - 1) * blockDim%x + threadIdx%x
 
-    if(ii==1) out_age = 0.d0
-    if(ii==2) out_mass = 0.d0
-    if(ii==3) out_comp = 0.d0
-    if(ii==4) out_np = 0
-    if(ii==5) et_age = 0.d0
-    if(ii==6) et_mass = 0.d0
-    if(ii==7) et_comp = 0.d0
-    if(ii==8) et_np = 0
-    if(ii==9) C = 0.d0
-    if(path > 0 .and. mod(kk,path) == 0) then
-        if(ii==10) nump_path = 0
-    endif
-
-    call syncthreads()
+    !if(ii==1) out_age = 0.d0
+    !if(ii==2) out_mass = 0.d0
+    !if(ii==3) out_comp = 0.d0
+    !if(ii==4) out_np = 0
+    !if(ii==5) et_age = 0.d0
+    !if(ii==6) et_mass = 0.d0
+    !if(ii==7) et_comp = 0.d0
+    !if(ii==8) et_np = 0
+    !if(ii==9) C = 0.d0
+    !if(path > 0 .and. mod(kk,path) == 0) then
+    !    if(ii==10) nump_path = 0
+    !endif
+!
+    !call syncthreads()
 !=============================================================================
     ir = -(932117 + ii + 100*kk)
 
