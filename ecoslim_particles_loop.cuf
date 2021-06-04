@@ -290,13 +290,11 @@ contains
                 exit
             end if
         end do
-        temp = atomicAdd(C(1,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,6) /  &
-        (dx*dy*dz(Ploc(3)+1)*(Porosity(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1)   &
-         *Saturation(Ploc(1)+1,Ploc(2)+1,Ploc(3)+1))))
+        temp = atomicAdd(C(1,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,11)*P(ii,6))
         temp = atomicAdd(C(2,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,4)*P(ii,6))
-        temp = atomicAdd(C(4,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,7)*P(ii,6))
+        temp = atomicAdd(C(4,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,5)*P(ii,6))
         temp = atomicAdd(C(3,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,6))
-        temp = atomicAdd(C(5,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,9)*P(ii,6))
+        temp = atomicAdd(C(5,Ploc(1)+1,Ploc(2)+1,Ploc(3)+1),P(ii,8)*P(ii,12)*P(ii,6))
 
     end if
 

@@ -1197,9 +1197,11 @@ do kk = outkk, pfnt
         out_age_cpu = 0.d0; out_mass_cpu = 0.d0; out_comp_cpu = 0.d0; out_np_cpu = 0
         et_age_cpu = 0.d0; et_mass_cpu = 0.d0; et_comp_cpu = 0.d0; et_np_cpu = 0
         out_age_de = out_age_cpu; out_mass_de = out_mass_cpu
-        out_comp_de = out_comp_cpu; out_np_de = out_np_cpu
+        out_comp_de = out_comp_cpu;
+        out_np_de = out_np_cpu
         et_age_de = et_age_cpu; et_mass_de = et_mass_cpu
-        et_comp_de = et_comp_cpu; et_np_de = et_np_cpu
+        et_comp_de = et_comp_cpu;
+        et_np_de = et_np_cpu
         C = 0.d0; C_de = C
 
         Vx_de   = Vx;        Vy_de   = Vy;        Vz_de   = Vz
@@ -1218,9 +1220,11 @@ do kk = outkk, pfnt
 
         C              = C_de
         out_age_cpu    = out_age_de;    out_mass_cpu   = out_mass_de
-        out_comp_cpu   = out_comp_de;   out_np_cpu     = out_np_de
+        out_comp_cpu   = out_comp_de
+        out_np_cpu     = out_np_de
         et_age_cpu     = et_age_de;     et_mass_cpu    = et_mass_de
-        et_comp_cpu    = et_comp_de;    et_np_cpu      = et_np_de
+        et_comp_cpu    = et_comp_de
+        et_np_cpu      = et_np_de
 
         call MPI_ALLReduce(MPI_IN_PLACE, ET_age_cpu,  1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
         call MPI_ALLReduce(MPI_IN_PLACE, ET_comp_cpu, 3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
@@ -1305,9 +1309,9 @@ end if
 end if
 
 ! normalize ages by mass
-where (C(3,:,:,:)>0.0)  C(2,:,:,:) = C(2,:,:,:) / C(3,:,:,:)
-where (C(3,:,:,:)>0.0)  C(4,:,:,:) = C(4,:,:,:) / C(3,:,:,:)
-where (C(3,:,:,:)>0.0)  C(5,:,:,:) = C(5,:,:,:) / C(3,:,:,:)
+!where (C(3,:,:,:)>0.0)  C(2,:,:,:) = C(2,:,:,:) / C(3,:,:,:)
+!where (C(3,:,:,:)>0.0)  C(4,:,:,:) = C(4,:,:,:) / C(3,:,:,:)
+!where (C(3,:,:,:)>0.0)  C(5,:,:,:) = C(5,:,:,:) / C(3,:,:,:)
 
 ! normalize ET ages by mass
 where (C(7,:,:,:)>0.0)  C(8,:,:,:) = C(8,:,:,:) / C(7,:,:,:)
@@ -1348,14 +1352,14 @@ if(icwrite > 0)  then
         call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,4)
         fname=trim(runname)//'.out.C5.'//trim(adjustl(filenumout))//'.pfb'
         call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,5)
-        fname=trim(runname)//'.out.C6.'//trim(adjustl(filenumout))//'.pfb'
-        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,6)
-        fname=trim(runname)//'.out.C7.'//trim(adjustl(filenumout))//'.pfb'
-        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,7)
-        fname=trim(runname)//'.out.C8.'//trim(adjustl(filenumout))//'.pfb'
-        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,8)
-        fname=trim(runname)//'.out.C9.'//trim(adjustl(filenumout))//'.pfb'
-        call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,9)
+        !fname=trim(runname)//'.out.C6.'//trim(adjustl(filenumout))//'.pfb'
+        !call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,6)
+        !fname=trim(runname)//'.out.C7.'//trim(adjustl(filenumout))//'.pfb'
+        !call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,7)
+        !fname=trim(runname)//'.out.C8.'//trim(adjustl(filenumout))//'.pfb'
+        !call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,8)
+        !fname=trim(runname)//'.out.C9.'//trim(adjustl(filenumout))//'.pfb'
+        !call pfb_write(C,fname,nx,ny,nz,dx,dy,dy,n_constituents,9)
     end if
 end if
 
