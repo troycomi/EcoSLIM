@@ -2,3 +2,7 @@
 create_subgrid.mod
 Example/ecoslim_add_particles.f90
 Example/ecoslim_parallel_io.f90
+*.o
+*.mod
+*.exe
+build/
