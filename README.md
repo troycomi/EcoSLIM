@@ -1,7 +1,17 @@
 # EcoSLIM
 EcoSLIM
 
-Using the makefile to build.
+To build with cmake
+```
+# in the ecoslim base directory
+
+# will produce configuration
+cmake -S . -B build cmake
+
+# will build the project
+cmake --build build
+```
+The executable will be generated in `build/bin/EcoSLIM`
 
 Environments for reference
 1. workstation
